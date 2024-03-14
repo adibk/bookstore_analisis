@@ -45,9 +45,9 @@ venv/
 *.log
 
 # Data
-# data/
-# html/
-# csv/
+data/
+html/
+csv/
 *.csv
 
 # Media files
