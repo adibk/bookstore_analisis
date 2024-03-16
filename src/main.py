@@ -1,9 +1,9 @@
-from clean import clean as cln
+from dfs import dfs as dfs
 
 def init_main():
     path_data = "data/csv/"
     file_names = ('customers' , 'products' , 'transactions')
-    csvs = cln.CsvHandler(path_data, file_names)
+    csvs = dfs.CsvHandler(path_data, file_names)
     csvs.init_dfs()
     
     return csvs
@@ -13,7 +13,7 @@ def exit_main():
 
 def main():
     csvs = init_main()
-    cln.handle_dfs(csvs)
+    dfs.handle_dfs(csvs)
     exit_main()
     
 if __name__ == "__main__":

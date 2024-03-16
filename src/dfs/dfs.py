@@ -289,7 +289,7 @@ def handle_dfs(csvs):
     'price': 'sum'    
     }).reset_index()
 
-     
+    
     print(aggregated_df.sort_values(by='price', ascending=True))
     N()
     

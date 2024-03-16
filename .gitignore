@@ -45,9 +45,9 @@ venv/
 *.log
 
 # Data
-data/
+# data/
 html/
-csv/
+# csv/
 *.csv
 
 # Media files
@@ -111,4 +111,4 @@ Thumbs.db
 # Node.js
 node_modules/
 npm-debug.log
-yarn-error.log
+yarn-error.log* data/csv
