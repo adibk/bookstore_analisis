@@ -1,3 +1,10 @@
+from utils import colors as clrs
+from utils.colors import clr
+from utils.colors import Color
+from utils import tools as tls
+from utils.tools import N
+from utils.debug import TEST
+
 import pandas as pd
 import re
 
@@ -49,16 +56,27 @@ class CsvPrint:
         print()
 
 class DfHandler:
-    def __init__(self, df, key=None, id=None):
+    def __init__(self, df, key=None, id=None, clr=Color.RED, length=80):
         self.key = key
         self.df = df
         self.id = id
+        self.clr = clr
+        self.length = length
         
         self.col = self._count_col()
         self.row = self._count_row()
         self.df_unique = self._get_df_unique()
         self.isunique = self._get_isunique()
         
+        self.sep = '-'
+        self.sep_clr = Color.BRIGHT_BLACK
+    
+    def set_clr(self, clr):
+        self.clr = clr
+    
+    def set_len(self, length):
+        self.length = length
+    
     def __new_df(self, new_df, key=None, id=None):
         if key == None:
             key = self.key
@@ -100,12 +118,34 @@ class DfHandler:
     def shape(self, end=''):
         print(self.key, self.df.shape, end, sep='')
             
-    # print df
-    def print(self, border='-', n=30):
-        print(border * 30, self.key, border * 30)
-        print(self.df)
-        print(border * (n * 2 + len(self.key) + 2), '\n', sep='')
+    def __print_header(self, key, border, length):
+        r = len(key) % 2
+        n = int((length - r - len(key) - 2) / 2)
+        print(clr(border * n, self.sep_clr), clr(key, self.clr), clr(border * (n + r), self.sep_clr))
+    
+    def print_sep(self, border, length):
+        print(clr(border * length, self.sep_clr), '\n', sep='')
         
+    # print df
+    def print(self, length=None, sep=None):
+        key = self.key if self.key != None else ''
+        length = self.length if length == None else length
+        sep = self.sep if sep == None else sep
+        
+        self.__print_header(key, sep, length)
+        
+        print(self.df)
+        
+        self.print_sep(length, sep)
+    
+    def print_col(self):
+        for col_name in self.df.columns:
+            print(col_name)
+        print()
+    
+    def types(self):
+        print(self.df.dtypes, '\n')
+    
     def sort(self, col=None):
         if col == None:
             col = self.id
@@ -121,9 +161,6 @@ class DfHandler:
     def match(self, col, pattern):
         df = self.df[self.df[col].str.match(pattern)]
         return DfHandler(df, self.key, self.id)
-    
-    def types(self):
-        print(self.df.dtypes, '\n')
         
     def max(self, col, display=True):
         max = self.df[col].max()
@@ -137,11 +174,6 @@ class DfHandler:
             print(min)
         return min
     
-    def print_col(self):
-        for col_name in self.df.columns:
-            print(col_name)
-        print()
-            
     def filter(self, col, fct):
         df = self.df[self.df[col].apply(fct)]
         return DfHandler(df, self.key, self.id)
@@ -166,28 +198,23 @@ class DfHandler:
     def is_(self, col, col_type):
         pass
     
-def get_df_handler(csvs, key, id):
-    return DfHandler(csvs.dfs[key], key, id)
-
-def N():
-    print()
-    
-def TEST(s=None):
-    if s == None:
-        print('--- TEST ---')
-    else:
-        print(s)
+def get_df_handler(csvs, key, *args):
+    return DfHandler(csvs.dfs[key], key, *args)
 
 def handle_dfs(csvs):
-    # Csvs visualization
+    # # Csvs quick visualization
     # csvs_visu = CsvPrint(csvs)
     # csvs_visu.print_file_paths()
     # csvs_visu.print_all()
     # csvs_visu.print_data('customers')
     
-    customers = get_df_handler(csvs, 'customers', 'client_id')
-    products = get_df_handler(csvs, 'products', 'id_prod')
-    transactions = get_df_handler(csvs, 'transactions', 'session_id')
+    customers = get_df_handler(csvs, 'customers', 'client_id', Color.BLUE)
+    products = get_df_handler(csvs, 'products', 'id_prod', Color.RED)
+    transactions = get_df_handler(csvs, 'transactions', 'session_id', Color.BRIGHT_GREEN)
+    
+    customers.print()
+    products.print()
+    transactions.print()
     
     # customers.shape()
     # products.shape()
@@ -249,49 +276,49 @@ def handle_dfs(csvs):
     # transactions.sort().print()
     
     
-    products.print()
-    customers.print()
-    transactions.print()
+    # products.print()
+    # customers.print()
+    # transactions.print()
     
     
-    # # Step 1: Merge transactions and products
-    transactions_products = pd.merge(transactions.df, products.df, on='id_prod', how='inner')
-    # print(transactions_products.shape)
+    # # # Step 1: Merge transactions and products
+    # transactions_products = pd.merge(transactions.df, products.df, on='id_prod', how='inner')
+    # # print(transactions_products.shape)
     
-    # Step 2: Merge the result with customers
-    final_df = pd.merge(transactions_products, customers.df, on='client_id', how='inner')
+    # # Step 2: Merge the result with customers
+    # final_df = pd.merge(transactions_products, customers.df, on='client_id', how='inner')
     
-    # print(final_df.shape)
-    # print(final_df)
+    # # print(final_df.shape)
+    # # print(final_df)
     
-    ca = final_df['price'].sum()
-    # print("Chiffre d'affaire:", ca)
+    # ca = final_df['price'].sum()
+    # # print("Chiffre d'affaire:", ca)
     
-    # Book not sold
-    merged_df = pd.merge(products.df, transactions.df, on='id_prod', how='left', indicator=True)
-    not_sold_df = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['price', 'categ', 'date', 'session_id', 'client_id', '_merge'])
-    # print(not_sold_df)
-    # print(not_sold_df.shape)
+    # # Book not sold
+    # merged_df = pd.merge(products.df, transactions.df, on='id_prod', how='left', indicator=True)
+    # not_sold_df = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['price', 'categ', 'date', 'session_id', 'client_id', '_merge'])
+    # # print(not_sold_df)
+    # # print(not_sold_df.shape)
     
-    # Customers who havn't made any transactions
-    merged_df = pd.merge(customers.df, transactions.df, on='client_id', how='left', indicator=True)
-    not_customers = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['date', 'session_id', 'sex', 'birth', 'id_prod', '_merge'])
-    # print(not_customers)
-    # print(not_customers.shape)
+    # # Customers who havn't made any transactions
+    # merged_df = pd.merge(customers.df, transactions.df, on='client_id', how='left', indicator=True)
+    # not_customers = merged_df[merged_df['_merge'] == 'left_only'].drop(columns=['date', 'session_id', 'sex', 'birth', 'id_prod', '_merge'])
+    # # print(not_customers)
+    # # print(not_customers.shape)
     
     
-    # Group by 'client_id' and sum 'price', reset index to make 'client_id' a column again
-    aggregated_df = final_df.groupby('client_id', as_index=False)['price'].sum()
-    aggregated_df = final_df.groupby('client_id').agg({
-    'id_prod': 'last', 
-    'sex': 'first',
-    'birth': 'first',
-    'price': 'sum'    
-    }).reset_index()
+    # # Group by 'client_id' and sum 'price', reset index to make 'client_id' a column again
+    # aggregated_df = final_df.groupby('client_id', as_index=False)['price'].sum()
+    # aggregated_df = final_df.groupby('client_id').agg({
+    # 'id_prod': 'last', 
+    # 'sex': 'first',
+    # 'birth': 'first',
+    # 'price': 'sum'    
+    # }).reset_index()
 
     
-    print(aggregated_df.sort_values(by='price', ascending=True))
-    N()
+    # print(aggregated_df.sort_values(by='price', ascending=True))
+    # N()
     
     # df_filtered = transactions.df[transactions.df['id_prod'].str.contains('0_2245')]
     # print(df_filtered)
