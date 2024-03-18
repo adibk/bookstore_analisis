@@ -1,5 +1,4 @@
 def TEST(s=None):
-    if s == None:
-        print('--- TEST ---')
-    else:
-        print(s)
+    s = str(s) if s != None else ''
+    print(f'--- TEST --- {s}')
+

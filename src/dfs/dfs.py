@@ -6,7 +6,10 @@ from utils.tools import N
 from utils.debug import TEST
 
 import pandas as pd
+import matplotlib.pyplot as plt
 import re
+from datetime import datetime
+import numpy as np
 
 class CsvHandler:
     def __init__(self, path, file_names):
@@ -90,13 +93,19 @@ class DfHandler:
     def _count_col(self):
         return self.df.shape[1]
     
+    # Drop duplicate values and return dataframe
+    def _get_df_unique(self):
+        if self.id == None:
+            return self.df
+        return self.df.drop_duplicates(subset=self.id)
+    
     # True or False, if df is unique
     def _get_isunique(self):
         if self.df.shape == self.df_unique.shape:
             return True
         return False
 
-    # Print is unique or is not unique
+    # Print df is unique OR not unique
     def is_unique(self, col=None):
         if col == None:
             col = self.id
@@ -108,40 +117,48 @@ class DfHandler:
             print('column used', col)
         print()
     
-    # Drop duplicate values and get a clean df
-    def _get_df_unique(self):
-        if self.id == None:
-            return self.df
-        return self.df.drop_duplicates(subset=self.id)
-    
     # print shape of a df
     def shape(self, end=''):
         print(self.key, self.df.shape, end, sep='')
             
-    def __print_header(self, key, border, length):
-        r = len(key) % 2
-        n = int((length - r - len(key) - 2) / 2)
-        print(clr(border * n, self.sep_clr), clr(key, self.clr), clr(border * (n + r), self.sep_clr))
+    def __print_header(self, header=None, length=None, sep=None):
+        header = header if header != None else self.key
+        header = header if header != None else ''
+        length = length if length != None else self.length
+        sep = sep if sep != None else self.sep
+        r = len(header) % 2
+        n = int((length - r - len(header) - 2) / 2)
+        print(clr(sep * n, self.sep_clr), clr(header, self.clr), clr(sep * (n + r), self.sep_clr))
     
-    def print_sep(self, border, length):
-        print(clr(border * length, self.sep_clr), '\n', sep='')
+    def print_sep(self, length=None, sep=None):
+        length = length if length != None else self.length
+        sep = sep if sep != None else self.sep
+        print(clr(sep * length, self.sep_clr), '\n', sep='')
+    
+    def info(self):
+        self.__print_header(self.key + ' info')
+        self.df.info()
+        self.print_sep()
         
     # print df
-    def print(self, length=None, sep=None):
-        key = self.key if self.key != None else ''
-        length = self.length if length == None else length
-        sep = self.sep if sep == None else sep
-        
-        self.__print_header(key, sep, length)
-        
+    def print(self, length=None, header=None, sep=None):
+        self.__print_header(header, length, sep)
         print(self.df)
-        
         self.print_sep(length, sep)
     
-    def print_col(self):
+    def head(self, n=5):
+        return DfHandler(self.df.head(n=n), self.key, self.id, self.clr, self.length)
+    
+    def tail(self, n=5):
+        return DfHandler(self.df.tail(n=n), self.key, self.id, self.clr, self.length)
+    
+    def print_cols(self):
         for col_name in self.df.columns:
             print(col_name)
         print()
+    
+    def get_cols(self):
+        return self.df.columns
     
     def types(self):
         print(self.df.dtypes, '\n')
@@ -154,7 +171,7 @@ class DfHandler:
         df = self.df.sort_values(by=col, ascending=False)
         return DfHandler(df, self.key, self.id)
     
-    def notmatch(self, col, pattern):
+    def not_match(self, col, pattern):
         invalid_df = self.df[~self.df[col].str.match(pattern)]
         return DfHandler(invalid_df, self.key, self.id)
     
@@ -186,9 +203,10 @@ class DfHandler:
         df = self.df[self.df[col].str.startswith(substr)]
         return self.__new_df(df)
     
-    def count(self, col):
+    def count(self, col, **kwargs):
         count = self.df[col].value_counts()
-        print(count, '\n', sep='')
+        if kwargs.get('put') == True:
+            print(count, '\n', sep='')
         return count
 
     def to(self, col, type):
@@ -197,12 +215,75 @@ class DfHandler:
             
     def is_(self, col, col_type):
         pass
+
+    def _to_list(self, *cols):
+        combined_list = []
+        for col in cols:
+            if isinstance(col, list):
+                combined_list.extend(col)
+            else:
+                combined_list.append(col)
+        return combined_list
     
+    def only(self, *cols):
+        cols = self._to_list(*cols)
+        return DfHandler(self.df[cols], self.key, self.id, self.clr, self.length)
+    
+    # use the describe method of panda, pass put=False for no printing
+    def describe(self, **args):
+        put_arg = args.pop('put', None)
+        if args == ():
+            df = self.df.describe(include='all')
+        else:
+            df = self.df.describe(**args)
+        df_handler = DfHandler(df, self.key, None, self.clr, self.length)
+        if not put_arg or (put_arg and put_arg != False):
+            df_handler.print(None, f'{df_handler.key} description')
+        return df_handler
+        
+
+def sex_distrib_plt(df_handler):
+    plt.style.use('seaborn-colorblind')
+
+    colors = ['skyblue', 'lightpink']
+    explode = (0.05, 0)
+
+    df_handler.count('sex').plot(kind='pie', 
+                                autopct='%1.1f%%', 
+                                labels=None, 
+                                colors=colors,
+                                explode=explode,
+                                startangle=90)
+
+    plt.title('Sex Distribution', fontsize=16, fontweight='bold', color='Grey')
+    plt.ylabel('')
+    plt.legend(labels=['Male', 'Female'], loc='best')
+    plt.show()
+
+def age_distrib_plt(df_handler):
+    df = df_handler.df
+        # Plotting the histogram of ages
+    # Calculate bins as one bin per year
+    min_age = df['age'].min()
+    max_age = df['age'].max()
+    bins = range(min_age, max_age + 2)  # +2 to include the last age in the range
+
+    plt.figure(figsize=(10, 6))
+    plt.hist(df['age'], bins=bins, color='skyblue', edgecolor='white')
+    plt.title('Distribution of Ages')
+    plt.xlabel('Age')
+    plt.ylabel('Count')
+
+    # Rotate x-axis labels to vertical
+    plt.xticks(range(min_age, max_age + 1), rotation=70)
+
+    plt.show()
+
 def get_df_handler(csvs, key, *args):
     return DfHandler(csvs.dfs[key], key, *args)
 
 def handle_dfs(csvs):
-    # # Csvs quick visualization
+    # # Csvs quick visualization just to make sure we using get_df_handler correctly afterward
     # csvs_visu = CsvPrint(csvs)
     # csvs_visu.print_file_paths()
     # csvs_visu.print_all()
@@ -210,12 +291,94 @@ def handle_dfs(csvs):
     
     customers = get_df_handler(csvs, 'customers', 'client_id', Color.BLUE)
     products = get_df_handler(csvs, 'products', 'id_prod', Color.RED)
-    transactions = get_df_handler(csvs, 'transactions', 'session_id', Color.BRIGHT_GREEN)
+    transactions = get_df_handler(csvs, 'transactions', None, Color.BRIGHT_GREEN)
     
+    # customers.print()
+    # products.print()
+    # transactions.print()
+    
+    # customers.info()
+    # products.info()
+    # transactions.info()
+
+    # customers.head(10).print()
+    # customers.tail(10).print()
+    # products.head(10).print()
+    # products.tail(10).print()
+    # transactions.head(10).print()
+    # transactions.tail(10).print()
+    
+    # products.describe()
+    # customers.describe()
+    # transactions.describe()
+    
+ 
+    customers.df['age'] = datetime.now().year - customers.df['birth']
+    customers.info()
+    customers.describe()
     customers.print()
-    products.print()
-    transactions.print()
     
+    # Check if sex is f or m only, OK
+    customers.not_match('sex', r'^[fm]$').print()
+    # check if client_id is c_NUMBER
+    # Noticing 2 problematic values ct_0 and ct_1 
+    customers.not_match('client_id', r'^c_\d+$').print()
+
+    # sex_distrib_plt(customers)
+    # # Noticing a way overrepresantated value in the age distribution, age 20
+    # # might be the majority default value when registering, check later with sales date and data collect beginning to see if it is coherent 
+    # age_distrib_plt(customers)
+
+    # printing the line where age == 20
+    TEST()
+    only_20 = customers.filter('age', lambda x: x == 20)
+    # Apparently no problem with client_id or sex, so only age must be readjust:
+    only_20.print()
+    # # Except that 
+    # sex_distrib_plt(customers)
+    customers.df['client_id_int'] = customers.df['client_id'].str.extract('(\d+)').astype(int)
+
+
+    customers.print()
+    customers.describe()
+    # Analyse c_Number, only 2 duplicate client_id_int=1
+    duplicates = customers.df[customers.df.duplicated('client_id_int', keep=False)]
+    print("Duplicate values in 'client_id_int':")
+    print(duplicates)   
+    N()
+    
+    mean_value = customers.df['age'].mean()
+    print("Mean of 'age' column:", mean_value)
+    # Calculate the median of the 'numbers' column
+    median_value = customers.df['age'].median()
+    print("Median of 'age' column:", median_value)
+    N()
+    
+    # calcul frequency in order to readjust the age value 20
+    # Count the occurrences of each age 
+    age_distribution = customers.df['age'].value_counts().reset_index()
+    age_distribution.columns = ['age', 'frequency']
+    age_distribution = age_distribution.sort_values(by='age').reset_index(drop=True)
+    print(age_distribution)
+    print(age_distribution.describe())
+    # median frequency 136
+    # mean 113
+    # value directly above (age=21,22,23,24): 146, 146, 129, 136
+    df = only_20.df.copy()
+    df.loc[:, 'age'] = np.nan
+    print(df)
+    
+    # debug only
+    np.random.seed(42)
+    # Randomly select 146 rows and set their 'Age' to 20
+    rows_to_update = df.sample(n=146, random_state=42).index
+    df.loc[rows_to_update, 'age'] = 20
+    print(df)
+    
+    df.print()
+    # transactions.print_cols()
+    # transactions.only('id_prod').print()
+
     # customers.shape()
     # products.shape()
     # transactions.shape('\n')
@@ -232,13 +395,13 @@ def handle_dfs(csvs):
     # N()
     
     # customers.types()
-    # customers.notmatch('sex', r'^[fd]$').print()
-    # customers.notmatch('client_id', r'^c_\d+$').print()
+    # customers.not_match('sex', r'^[fd]$').print()
+    # customers.not_match('client_id', r'^c_\d+$').print()
     # N()
     
     # # Exploring invalid data in products
     # products.is_unique()
-    # products.print_col()
+    # products.print_cols()
     # products.types()
     # products.max('price')
     # products.min('price')
@@ -253,10 +416,10 @@ def handle_dfs(csvs):
     # transactions.is_unique()
     # transactions.print()
     
-    # transactions.notmatch('id_prod', r'^[012]_\d+$').print()
-    # transactions.notmatch('client_id', r'^c_\d+$').print()
-    # transactions.notmatch('session_id', r'^s_[1-9]\d*$').print()
-    # transactions.notmatch('date', r'^20[012][0-9]-[01][0-9]-[0123][0-9] [012][0-9]:[0-5][0-9]:[0-5][0-9].\d{6}$').print()
+    # transactions.not_match('id_prod', r'^[012]_\d+$').print()
+    # transactions.not_match('client_id', r'^c_\d+$').print()
+    # transactions.not_match('session_id', r'^s_[1-9]\d*$').print()
+    # transactions.not_match('date', r'^20[012][0-9]-[01][0-9]-[0123][0-9] [012][0-9]:[0-5][0-9]:[0-5][0-9].\d{6}$').print()
     # transactions.sort().print()
     # TEST()
     # print(transactions.startwith('date', 'test').row)

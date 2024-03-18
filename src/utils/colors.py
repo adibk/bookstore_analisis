@@ -28,7 +28,8 @@ class Color:
     ITALIC = '\033[3m'
     STRIKETHROUGH = '\033[9m'
     
-def str_clr(s, clr=Color.BRIGHT_RED):
+def str_clr(s, clr=None):
+    clr = clr if clr != None else Color.BRIGHT_RED 
     return clr + s + Color.END
 
 def clr(lst, clr=Color.BRIGHT_RED):
@@ -43,3 +44,5 @@ def clr(lst, clr=Color.BRIGHT_RED):
         return clr_lst
     return str_clr(lst, clr[0])
 
+def put(str, clr=None):
+    print(str_clr(str, clr))
