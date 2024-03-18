@@ -312,7 +312,13 @@ def handle_dfs(csvs):
     # customers.describe()
     # transactions.describe()
     
- 
+    # Exploring invalid data in customers
+    
+    customers.is_unique()
+    customers.max('birth')
+    customers.min('birth')
+    N()
+    
     customers.df['age'] = datetime.now().year - customers.df['birth']
     customers.info()
     customers.describe()
@@ -364,50 +370,22 @@ def handle_dfs(csvs):
     # median frequency 136
     # mean 113
     # value directly above (age=21,22,23,24): 146, 146, 129, 136
-    df = only_20.df.copy()
-    df.loc[:, 'age'] = np.nan
-    print(df)
     
-    # debug only
-    np.random.seed(42)
-    # Randomly select 146 rows and set their 'Age' to 20
-    rows_to_update = df.sample(n=146, random_state=42).index
-    df.loc[rows_to_update, 'age'] = 20
-    print(df)
     
-    df.print()
-    # transactions.print_cols()
-    # transactions.only('id_prod').print()
-
-    # customers.shape()
-    # products.shape()
-    # transactions.shape('\n')
     
-    # # Print all dataframes
-    # customers.print()
-    # products.print()
-    # transactions.print()
+    # Exploring invalid data in products
+    products.describe()
+    products.print()
+    products.is_unique()
+    products.print_cols()
+    products.types()
+    products.max('price')
+    # observing negative value
+    products.min('price')
+    N()
+    products.filter('price', lambda x: x <= 0).print()
     
-    # # Exploring invalid data in customers
-    # customers.is_unique()
-    # customers.max('birth')
-    # customers.min('birth')
-    # N()
     
-    # customers.types()
-    # customers.not_match('sex', r'^[fd]$').print()
-    # customers.not_match('client_id', r'^c_\d+$').print()
-    # N()
-    
-    # # Exploring invalid data in products
-    # products.is_unique()
-    # products.print_cols()
-    # products.types()
-    # products.max('price')
-    # products.min('price')
-    # N()
-    
-    # products.filter('price', lambda x: x <= 0).print()
     # products.filter_out('categ', lambda x: x == 0 or x == 1 or x == 2).print()
     # N()
     
